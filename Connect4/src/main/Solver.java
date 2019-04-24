@@ -40,9 +40,9 @@ public class Solver {
             int dist = distFromHash(distHash, numPieces);
             int winCheckDist = (sizeIsEven) ? dist : ~dist;
             if (hasWinSet(winCheckDist, winSets)) {
-                gameValue = LOSE;
+                gameValue = -1;
             } else {
-                gameValue = TIE;
+                gameValue = 0;
             }
             valueArr[distHash] = gameValue;
         }
@@ -64,20 +64,20 @@ public class Solver {
             int dist = distFromHash(distHash, numPieces);
             int winCheckDist = (numPieces % 2 == 0) ? dist : ~dist;
             if (hasWinSet(winCheckDist, winSets)) {
-                gameValue = LOSE;
+                gameValue = (byte) (numPieces - SIZE - 1);
             } else {
                 int[] childDists = getChildDists(dist, shape, numPieces, numChildren);
-                byte minChildVal = WIN;
+                byte minChildVal = Byte.MAX_VALUE;
                 for (int i = 0; i < numChildren; i++) {
                     byte newVal = childValueArrs[i][distToHash(childDists[i])];
                     if (newVal < minChildVal) {
                         minChildVal = newVal;
-                        if (minChildVal == LOSE) {
+                        if (minChildVal == numPieces - SIZE) {
                             break;
                         }
                     }
                 }
-                gameValue = (byte) (WIN - minChildVal);
+                gameValue = (byte) -minChildVal;
             }
             localGameVals[distHash] = gameValue;
         }

@@ -14,6 +14,7 @@ public class TestSolver extends Solver {
 //        s.findFirstPrimitive();
 //        System.out.println(s.getValue(5, 881, 6));
 //        s.findChildValsExplore(5, 881, 6);
+        System.out.println(s.getValue(3, 631, 2));
     }
 
     void findFirstPrimitive() {
@@ -39,8 +40,8 @@ public class TestSolver extends Solver {
         int[] childShapes = getChildShapes(shape);
         for (int i = 0; i < childShapes.length; i++) {
             byte childVal = gameValues[numPieces + 1][shapeToHash[childShapes[i]]][distToHash(childDists[i])];
-            System.out.println(valToString[childVal]);
-            if (childVal == LOSE) {
+            System.out.println(childVal);
+            if (childVal < 0) {
                 System.out.println();
                 printPos(numPieces + 1, childShapes[i], childDists[i]);
                 findChildValsExplore(numPieces + 1, childShapes[i], childDists[i]);
@@ -55,7 +56,7 @@ public class TestSolver extends Solver {
         int[] childShapes = getChildShapes(shape);
         for (int i = 0; i < childShapes.length; i++) {
             byte childVal = gameValues[numPieces + 1][shapeToHash[childShapes[i]]][distToHash(childDists[i])];
-            System.out.println(valToString[childVal]);
+            System.out.println(childVal);
         }
     }
 
@@ -65,7 +66,7 @@ public class TestSolver extends Solver {
         for (int i = 0; i < gameValues.length; i++) {
             for (int j = 0; j < gameValues[i].length; j++) {
                 for (int k = 0; k < gameValues[i][j].length; k++) {
-                    if (gameValues[i][j][k] == WIN) {
+                    if (gameValues[i][j][k] > 0) {
                         printPos(i, shapeToHash[j], distToHash(k));
                         return;
                     }
@@ -81,7 +82,7 @@ public class TestSolver extends Solver {
     void findInitVal() {
         System.out.println();
         System.out.println("Initial Game Value:");
-        System.out.println(valToString[gameValues[0][0][0]]);
+        System.out.println(gameValues[0][0][0]);
     }
 
     void printPos(int i, int j, int k) {  // should make this not take in hashes (ok, changed it)
@@ -89,4 +90,8 @@ public class TestSolver extends Solver {
         System.out.println("shape: " + j);
         System.out.println("dist: " + k);
     }
+
+//    String gameValToString(int gameVal) {
+//
+//    }
 }
