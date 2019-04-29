@@ -1,17 +1,18 @@
 package main;
 
-public class Solver {
+public class Solver { // migrate dists to long
     static final int WIDTH = Value.WIDTH, HEIGHT = Value.HEIGHT, IN_A_ROW = 4;
     static final int SIZE = WIDTH * HEIGHT, HEIGHTp1 = HEIGHT + 1;
     static final int NUM_SHAPES = Util.pow(HEIGHT + 1, WIDTH);
-    static final byte LOSE = 0, TIE = 1, WIN = 2;
-    static final String[] valToString = new String[] {"LOSE", "TIE", "WIN"};
+//    static final byte LOSE = 0, TIE = 1, WIN = 2;
+//    static final String[] valToString = new String[] {"LOSE", "TIE", "WIN"};
 
     final byte[][][] gameValues = new byte[SIZE + 1][][];
-    final int[][] binoms = Util.calcBinoms(SIZE);
+    final long[][] binoms = Util.calcBinoms(SIZE);
     final int[] shapeToHash = new int[NUM_SHAPES];
     final int[][] shapeFromHash = new int[SIZE + 1][];
-    final int[] allWinSets = genAllWinSets();
+    final long[] allWinSets = genAllWinSets();
+    int numValidPositions = 0;
 
     void solve() {
         initializeArrays();
@@ -23,7 +24,7 @@ public class Solver {
 
     void solveTier(int numPieces) {
         int numShapesInTier = gameValues[numPieces].length;
-        int numDists = getNumDists(numPieces);
+        long numDists = getNumDists(numPieces);
         for (int shapeHash = 0; shapeHash < numShapesInTier; shapeHash++) {
             solveShape(numPieces, shapeHash, numDists);
         }
@@ -31,27 +32,33 @@ public class Solver {
 
     void solveBottomTier() {
         int numPieces = SIZE;
-        int numDists = getNumDists(numPieces);
+        long numDists = getNumDists(numPieces);
         boolean sizeIsEven = numPieces % 2 == 0;
-        int[] winSets = allWinSets;
+        long[] winSets = allWinSets;
         byte[] valueArr = gameValues[numPieces][0];
-        for (int distHash = 0; distHash < numDists; distHash++) {
+        for (long distHash = 0; distHash < numDists; distHash++) {
             byte gameValue;
-            int dist = distFromHash(distHash, numPieces);
-            int winCheckDist = (sizeIsEven) ? dist : ~dist;
+            long dist = distFromHash(distHash, numPieces);
+            long validCheckDist = sizeIsEven ? ~dist : dist;
+            if (hasWinSet(validCheckDist, winSets)) {
+                continue;
+            }
+            numValidPositions++;
+            long winCheckDist = sizeIsEven ? dist : ~dist;
             if (hasWinSet(winCheckDist, winSets)) {
                 gameValue = -1;
             } else {
                 gameValue = 0;
             }
-            valueArr[distHash] = gameValue;
+            valueArr[(int) distHash] = gameValue;
         }
     }
 
-    void solveShape(int numPieces, int shapeHash, int numDists) {
+    void solveShape(int numPieces, int shapeHash, long numDists) {
+        boolean sizeIsEven = numPieces % 2 == 0;
         byte[] localGameVals = gameValues[numPieces][shapeHash];
         int shape = shapeFromHash[numPieces][shapeHash];
-        int[] winSets = getWinSets(shape);
+        long[] winSets = getWinSets(shape);
         int[] childShapes = getChildShapes(shape);
         int numChildren = childShapes.length;
         byte[][] childValueArrs = new byte[numChildren][];
@@ -59,17 +66,22 @@ public class Solver {
         for (int i = 0; i < numChildren; i++) {
             childValueArrs[i] = childTier[shapeToHash[childShapes[i]]];
         }
-        for (int distHash = 0; distHash < numDists; distHash++) {
+        for (long distHash = 0; distHash < numDists; distHash++) {
             byte gameValue;
-            int dist = distFromHash(distHash, numPieces);
-            int winCheckDist = (numPieces % 2 == 0) ? dist : ~dist;
+            long dist = distFromHash(distHash, numPieces);
+            long validCheckDist = sizeIsEven ? ~dist : dist;
+            if (hasWinSet(validCheckDist, winSets)) {
+                continue;
+            }
+            numValidPositions++;
+            long winCheckDist = sizeIsEven ? dist : ~dist;
             if (hasWinSet(winCheckDist, winSets)) {
                 gameValue = (byte) (numPieces - SIZE - 1);
             } else {
-                int[] childDists = getChildDists(dist, shape, numPieces, numChildren);
+                long[] childDists = getChildDists(dist, shape, numPieces, numChildren);
                 byte minChildVal = Byte.MAX_VALUE;
                 for (int i = 0; i < numChildren; i++) {
-                    byte newVal = childValueArrs[i][distToHash(childDists[i])];
+                    byte newVal = childValueArrs[i][(int) distToHash(childDists[i])];
                     if (newVal < minChildVal) {
                         minChildVal = newVal;
                         if (minChildVal == numPieces - SIZE) {
@@ -79,20 +91,20 @@ public class Solver {
                 }
                 gameValue = (byte) -minChildVal;
             }
-            localGameVals[distHash] = gameValue;
+            localGameVals[(int) distHash] = gameValue;
         }
     }
 
-    int[] getChildDists(int dist, int shape, int numPieces, int numChildren) {
+    long[] getChildDists(long dist, int shape, int numPieces, int numChildren) {
         int player = numPieces % 2;
-        int[] childDists = new int[numChildren];
+        long[] childDists = new long[numChildren];
         int newPieceIndex = 0, count = 0;
         for (int i = 0; i < WIDTH; i++) {
             int numPiecesInCol = shape % (HEIGHT + 1);
             newPieceIndex += numPiecesInCol;
             if (numPiecesInCol < HEIGHT) {
-                int left = (dist >>> newPieceIndex) << (newPieceIndex + 1);
-                int right = dist % (1 << newPieceIndex);
+                long left = (dist >>> newPieceIndex) << (newPieceIndex + 1);
+                long right = dist % (1 << newPieceIndex);
                 childDists[count++] = left | (player << newPieceIndex) | right;
             }
             shape /= HEIGHT + 1;
@@ -119,8 +131,8 @@ public class Solver {
         return result;
     }
 
-    boolean hasWinSet(int dist, int[] winsets) {
-        for (int winSet: winsets) {
+    boolean hasWinSet(long dist, long[] winsets) {
+        for (long winSet: winsets) {
             if ((dist & winSet) == winSet) {
                 return true;
             }
@@ -128,39 +140,39 @@ public class Solver {
         return false;
     }
 
-    int[] getWinSets(int shape) {
-        int shapeBitString = getShapeBitString(shape);
-        int[] validBitStrings = new int[allWinSets.length];
+    long[] getWinSets(int shape) {
+        long shapeBitString = getShapeBitString(shape);
+        long[] validBitStrings = new long[allWinSets.length];
         int numValid = 0;
-        for (int winSet: allWinSets) {
+        for (long winSet: allWinSets) {
             if ((shapeBitString & winSet) == winSet) {
                 validBitStrings[numValid++] = winSet;
             }
         }
-        int[] result = new int[numValid];
+        long[] result = new long[numValid];
         for (int i = 0; i < numValid; i++) {
             result[i] = compressWinSet(validBitStrings[i], shape);
         }
         return result;
     }
 
-    int compressWinSet(int winSet, int shape) {
+    long compressWinSet(long winSet, int shape) {
         int offset = 0;
         for (int i = 0; i < WIDTH; i++) {
             int numPiecesInCol = shape % (HEIGHT + 1);
             int shift = offset + HEIGHT;
             offset += numPiecesInCol;
-            int left = (winSet >>> shift) << offset;
-            int right = winSet % (1 << offset);
+            long left = (winSet >>> shift) << offset;
+            long right = winSet % (1 << offset);
             winSet = left | right;
             shape /= HEIGHT + 1;
         }
         return winSet;
     }
 
-    int getShapeBitString(int shape) {
-        int bitString = 0;
-        int singleBit = 1;
+    long getShapeBitString(int shape) {
+        long bitString = 0;
+        long singleBit = 1;
         while (shape > 0) {
             int numPiecesInCol = shape % (HEIGHT + 1);
             for (int j = 0; j < numPiecesInCol; j++) {
@@ -172,13 +184,13 @@ public class Solver {
         return bitString;
     }
 
-    int[] genAllWinSets() {
+    long[] genAllWinSets() {
         int vertGap = HEIGHT - IN_A_ROW + 1, horiGap = WIDTH - IN_A_ROW + 1;
         int numVertWinSets = vertGap * WIDTH;
         int numHoriWinSets = horiGap * HEIGHT;
         int numDiagWinSets = vertGap * horiGap;
         int numWinSets = numVertWinSets + numHoriWinSets + 2 * numDiagWinSets;
-        int[] winSets = new int[numWinSets];
+        long[] winSets = new long[numWinSets];
         int index = 0;
         addWinSets(1, 0, vertGap, WIDTH, index, winSets);
         index += numVertWinSets;
@@ -190,8 +202,8 @@ public class Solver {
         return winSets;
     }
 
-    void addWinSets(int stride, int offset, int numVertShifts, int numHoriShifts, int index, int[] winSets) {
-        int canonWinSet = 0;
+    void addWinSets(int stride, int offset, int numVertShifts, int numHoriShifts, int index, long[] winSets) {
+        long canonWinSet = 0;
         for (int i = 0; i < IN_A_ROW; i++) {
             canonWinSet <<= stride;
             canonWinSet |= 1;
@@ -204,11 +216,12 @@ public class Solver {
         }
     }
 
-    int distFromHash(int hash, int numPieces) {
-        int dist = 0, numOnes = numPieces / 2;
+    long distFromHash(long hash, int numPieces) {
+        long dist = 0;
+        int numOnes = numPieces / 2;
         for (int index = numPieces - 1; index >= 0; index--) {
             dist <<= 1;
-            int binom = binoms[index][numOnes];
+            long binom = binoms[index][numOnes];
             if (binom <= hash) {
                 dist |= 1;
                 numOnes--;
@@ -218,8 +231,10 @@ public class Solver {
         return dist;
     }
 
-    int distToHash(int dist) {
-        int hash = 0, numOnes = 0, index = 0;
+    long distToHash(long dist) {
+        long hash = 0;
+        int numOnes = 0;
+        int index = 0;
         while (dist != 0) {
             if ((dist & 1) == 1) {
                 numOnes++;
@@ -239,7 +254,7 @@ public class Solver {
             arrSizes[numPieces]++;
         }
         for (int i = 0; i <= SIZE; i++) {
-            gameValues[i] = new byte[arrSizes[i]][getNumDists(i)];
+            gameValues[i] = new byte[arrSizes[i]][(int) getNumDists(i)];
             shapeFromHash[i] = new int[arrSizes[i]];
         }
         for (int shape = 0; shape < NUM_SHAPES; shape++) {
@@ -247,7 +262,7 @@ public class Solver {
         }
     }
 
-    int getNumDists(int numPieces) {
+    long getNumDists(int numPieces) {
         return binoms[numPieces][numPieces / 2];
     }
 
